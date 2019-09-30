@@ -1,0 +1,483 @@
+# Uppgift 1
+
+
+linear_regression <- function(data, dep, indep, intercept = TRUE) {
+  y <- as.matrix(data[, dep])
+  x <- as.matrix(data[, indep])
+  if (intercept == TRUE) {
+    x <- cbind(1, x)
+  }
+  beta <- c(solve(crossprod(x)) %*% crossprod(x, y))
+  fits <- x %*% beta
+  resids <- y - fits
+  sigma2 <- sum(resids^2)/(length(resids)-ncol(x))
+  se <- sqrt(diag(sigma2 * solve(crossprod(x))))
+  names(beta) <- colnames(x)
+  return_obj <- list(beta = beta, se = se,
+                     residuals = c(resids), fitted = c(fits),
+                     sigma = sqrt(sigma2), dep = dep, indep = indep,
+                     intercept = intercept, y = c(y))
+  class(return_obj) <- "linear_regression"
+  return(return_obj)
+}
+
+
+
+
+reg_t_test <- function(data, parameter, alpha, H0 = 0) {
+  
+  
+  Variable =  parameter
+  Pestimate = data$beta[parameter]  
+  t.value = (data$beta[parameter] - H0) / data$se[parameter]
+  
+  p.value = 2*pt(-abs(t.value),df= NROW(lin_mod$residuals) - 1)  
+  
+  if (p.value <= 0.05) {
+    
+    interpretation = "The result is significant on 5 % significance level"
+    
+  } 
+  
+  else { 
+    interpretation = "The result is non-significant on 5 % significance level" 
+    
+  }
+  
+  return_obj <- list(Variable = Variable, Pestimate = Pestimate,H0 = H0,alpha = alpha, p.value = p.value, t.value = t.value, interpretation = interpretation)
+  
+  class(return_obj) <- "linear_regression_test"
+
+   
+  return(return_obj)
+  
+}
+
+print.linear_regression_test <- function(return_obj) {
+  cat('Variable:', return_obj$Variable,
+      '\nParameter estimate:', return_obj$Pestimate,
+      '\nParameter value under H_0:', return_obj$H0,
+      '\nSignificance level', return_obj$alpha,
+      '\nt-value:', return_obj$t.value,
+      '\np-value:', return_obj$p.value,
+      '\nInterpretation:', return_obj$interpretation)
+}
+
+
+
+lin_mod <- linear_regression(ggplot2::mpg,
+                             dep = "cty",
+                             indep = c("displ", "hwy", "cyl"))
+
+obj <- reg_t_test(lin_mod, parameter = "displ", alpha = 0.05, H0 = 0)
+class(obj)
+obj
+
+
+
+
+waiting <- faithful$waiting
+
+
+hist(waiting)
+
+epanechnikov_kernel = function(x) {
+K = c()
+for (i  in 1:length(x)){
+  if(abs(x[i]) <= 1){
+    K[i] = (3/4)*(1-(x[i]^2))  
+  } else {
+    K[i] = 0
+  }
+  } 
+  return(K)
+}
+
+gaussian_kernel = function(x){
+  K = c()
+  for (i  in 1:length(x)){
+    K[i] = (1/sqrt(2*pi)) * exp((-1/2) * x[i]^2)
+  }
+  return(K)
+}
+
+uniform_kernel = function(x){
+  K = c()
+  for(i in 1:length(x)){
+    if(abs(x[i])<=1){
+      K[i] <- (1/2)*1
+    }else{
+      K[i] = 0
+    }
+  }
+  return(K)
+}
+  
+
+length(x)
+x = c(0.6,1.1,-0.4)
+epanechnikov_kernel(x)
+gaussian_kernel(x)
+uniform_kernel(x)
+
+
+kde = function(x, h, kernel, length_out){
+
+
+density_estimate  <- c() 
+
+n = NROW(x)
+
+x_values = length_out
+
+
+
+
+for(i in 1:length(x_values)) {
+
+density_estimate[i] = (1/(n*h)) * sum(kernel(((x_values[i] - x) / h))) 
+
+}
+  
+return(list("density" = density_estimate,
+              "x" = x_values))
+}
+
+library(tidyverse)
+
+gaussian <- kde(waiting, h = 3, kernel = gaussian_kernel, length_out = 40:100)
+epanechnikov <- kde(waiting, h = 3, kernel = epanechnikov_kernel, length_out = 40:100)
+uniform <- kde(waiting, h = 3, kernel = uniform_kernel, length_out = 40:100)
+
+test1 <- kde(waiting, h = 3, kernel = gaussian_kernel, length_out = 20:100)
+plot(test1$x, test1$density)
+
+ggplot() +
+  geom_histogram(aes(x = waiting, y = stat(density)), binwidth = 2, alpha = 0.8, fill = "aquamarine2", color = "darkgreen") + 
+  geom_line(aes(gaussian$x, gaussian$density, color = "Gaussian"), size = 1) +
+  geom_line(aes(epanechnikov$x, epanechnikov$density, color = "Epanechnikov"), size = 1) + 
+  geom_line(aes(uniform$x, uniform$density, color = "Uniform"), size = 1) +
+  scale_color_manual(values = c('Gaussian' = 'darkblue', 'Epanechnikov' = 'darkgreen', 'Uniform' = 'green')) +
+  labs(title="Density plot", 
+       subtitle="Comparison of kernel density estimates",
+       x="Waiting",
+       y= "Density",
+       colour = "Kernel estimate")
+
+
+
+ggplot() +
+  geom_histogram(aes(x = faithful$waiting, y = stat(density)), binwidth = 3, fill = "lightblue") +
+  geom_line(aes(x = gaussian$x, y = gaussian$density), size = 1, color = "red") + 
+  geom_line(aes(x = epanechnikov$x, y = epanechnikov$density), size = 1, color = "orange") + 
+  geom_line(aes(x = uniform$x, y = uniform$density), size = 1, color = "yellow") 
+
+
+
+
+
+
+
+library(dplyr)
+library(ggplot2)
+library(devtools)
+library(readr)
+
+
+
+
+###First we must take care of the set of Weather data, measuring windspeed and temperature at different sites
+###However the existing colnames och variables names showed off to be hard to work with
+### Therefore we decided to import them unamed, and to skip the first row(which orginally was used for colnames)
+
+WeatherX <- read_csv("Weather.csv" , skip =1 ,  col_names = FALSE)
+
+### After this I renamed the variables of interest
+
+Weather1 <- WeatherX %>% 
+  rename(parameter_name = X10, mean = X18, date = X13 , local_site = X24 )
+
+### I then filtered out the observations from the measuring site of interest
+
+Weather2 <- Weather1 %>%
+  filter(local_site == "Clinton")
+
+#### Then I separated the datafile into two subsets, depending on which parameter that was measured 
+
+Weather_temp <- Weather2 %>%
+  filter(parameter_name == "Outdoor Temperature" )
+
+Weather_wind <- Weather2 %>% 
+  filter(parameter_name == "Wind Speed - Resultant")
+#### After that we rename mean values, so we know what they are supposed to measure
+Weather_temp2 <- Weather_temp %>%
+  rename(temp_mean = mean)
+
+Weather_wind2 <- Weather_wind %>%
+  rename(WS_mean = mean)
+
+
+
+#### I then I had to group them together again
+
+
+
+meteorologi <- inner_join(
+  Weather_temp2, Weather_wind2 , by = c("date", "local_site"))
+
+####singel out the wanted variables
+
+meteorologi2 <- meteorologi %>%
+  select("date" , "WS_mean", "temp_mean" , "local_site")
+
+#########fix the two other CSV files
+#### starting with Pollution 
+PollutionX <-read_csv("Pollution.csv" , skip =1 ,  col_names = FALSE)
+
+Pollution1 <- PollutionX %>% 
+  filter(X24 == "Clinton")
+#######
+Pollution2 <- Pollution1 %>% 
+  rename(parameter_name = X10, mean = X18, date = X13 , local_site = X24 )
+
+#######
+
+Pollution_ozon <- Pollution2 %>%
+  filter(parameter_name == "Ozone" )
+
+Pollution_Nitro <- Pollution2 %>% 
+  filter(parameter_name == "Nitrogen dioxide (NO2)")
+##################################
+Pollution_ozon2 <- Pollution_ozon %>%
+  rename(O_mean = mean)
+
+Pollution_Nitro2 <- Pollution_Nitro %>%
+  rename(N_mean = mean)
+
+###########
+
+smuts <- inner_join(
+  Pollution_ozon2, Pollution_Nitro2 , by = c("date", "local_site"))
+#########
+smuts2 <- smuts %>%
+  select("date" , "N_mean", "O_mean" , "local_site")
+
+#### Last but not least AQI
+
+AQImap <- read_csv("AQI.csv")
+
+AQIX <- read_csv("AQI.csv" , skip =1 ,  col_names = FALSE)
+
+#### renaming
+
+AQI1 <- AQIX %>% 
+  rename(county_name = X3, AQI_num = X7, date = X6 , AQI_cat = X8 )
+
+
+#### single out the right county specific data 
+
+AQI2 <- AQI1 %>%
+  filter(county_name == "Harris")
+
+###rename county name to local site
+
+AQI3 <- AQI2 %>%
+  rename(local_site = county_name)
+
+AQI_final <-AQI3 %>%
+  select( "AQI_num" , "date", "AQI_cat")
+
+
+#### the files of intreset are called "meteorologi2" "smuts2" and "AQI_final"
+
+#### however the files got different numbers of observations, I will try to inner join the different CSV files 
+#### -- and hope that the missing observations will show as observations with different NA values
+
+testosterone <- inner_join(
+  AQI_final , smuts2,  by = c("date" )
+) 
+
+testosterone2 <- inner_join(
+  testosterone, meteorologi2, by = c("date", "local_site")
+)
+
+##########
+PART3 <- testosterone2
+365*2
+
+plot(PART3$date, PART3$N_mean)
+#####
+
+
+da <- seq(as.Date('2016-01-01'),as.Date('2017-12-31'),by = 1)
+
+
+## lost data algorithm 
+
+for(i in 1:length(da)){
+h <-  as.data.frame(da %in% PART3$date)
+if(hj[i,] == "FALSE"){
+  print(da[i])
+} 
+}
+
+## Convert the temperature variable into celsius
+PART3 <- PART3 %>% 
+  mutate(dummy = ifelse(PART3$AQI_cat == "Good" | PART3$AQI_cat == "Moderate", "Good", "Bad")) %>% 
+  mutate(weighted_ozon = PART3$O_mean*500)
+
+
+library(ggplot2)
+library(dplyr)
+library(weathermetrics)
+
+PART3$temp_mean_celsius <- fahrenheit.to.celsius(PART3$temp_mean)
+
+
+
+PART3 %>%  ggplot() +
+  geom_point(aes(y = temp_mean_celsius, x = date), color = "blue", shape = 15, size = z) +
+  geom_smooth(aes(y = temp_mean_celsius, x = date), colour = "blue") + 
+  geom_point(aes(y = WS_mean, x = date), color = "green", shape = 16, size = z) + 
+  geom_smooth(aes(y = WS_mean, x = date), color = "green") +
+  geom_point(aes(y = N_mean, x = date), color = "red", shape = 17, size = z) + 
+  geom_smooth(aes(y = N_mean, x = date), color = "red") +
+  geom_point(aes(y = weighted_ozon, x = date), color = "orange", shape = 18, size = z) + 
+  geom_smooth(aes(y = weighted_ozon, x = date), color = "orange") 
+
+
+install.packages("RColorBrewer")
+install.packages("viridis")  # Install
+library("viridis") 
+library("RColorBrewer")
+
+  
+  obs_size  = 0.9
+  line_size = 1.5
+
+  ggplot(PART3, mapping = aes(x = date)) + 
+    geom_point(mapping = aes(y = temp_mean_celsius, color = "Temperature", shape = "Temperature"), size = obs_size) + 
+    geom_point(mapping = aes(y = WS_mean, color = "Wind speed", shape = "Wind speed"), size = obs_size) + 
+    geom_point(mapping = aes(y = weighted_ozon, color = "Ozone", shape = "Ozone"), size = obs_size) + # change shapes
+    geom_point(mapping = aes(y = N_mean, color = "NO2", shape = "NO2"), size = obs_size) + 
+    geom_smooth(mapping = aes(y = temp_mean_celsius, color = "Temperature"), size = line_size) + 
+    geom_smooth(mapping = aes(y = WS_mean, colour = "Wind speed"), size = line_size) +
+    geom_smooth(mapping = aes(y = weighted_ozon, colour = "Ozone"), size = line_size) + 
+    geom_smooth(mapping = aes(y = N_mean, colour = "NO2"), size = line_size) +
+    scale_shape_manual(values = c(15, 16, 17, 18), labels = c("NO2", "Ozone", "Temperature", "Wind speed")) +
+    #scale_color_viridis(discrete = TRUE, option = "D") +
+    #scale_fill_viridis(discrete = TRUE) +
+    #scale_color_brewer(palette = "Dark2", labels = c("NO2", "Ozone", "Temperature in celsius", "Wind speed")) +
+    
+    #scale_color_tron()+
+    #scale_fill_tron()+
+    theme_minimal() +
+    scale_color_manual(values = c("darkgreen", "darkblue", "green", "darkturquoise"), labels = c("NO2", "Ozone", "Temperature", "Wind speed")) +
+    labs(y = "Level of variables",
+         x = "Date",
+         colour = "Parameter", 
+         title = "Time series data showing the relationship between NO2, Ozone, Temperature and Wind speed over 2016-01-01 to 2017-12-31 in Texas", 
+         subtitle = "Scatterplot and smoothed line graph of weather and pollution variables.", 
+         caption = "Ozone and NO2 measured in ppb, temperature in C\u00B0 and wind speed in knots.") +
+    guides(shape = FALSE) + 
+    theme(legend.position = "bottom", legend.title=element_blank()) 
+  
+  
+  yolo <- PART3 %>% 
+    select(c("N_mean","weighted_ozon", "date", "WS_mean", "temp_mean_celsius"))
+  
+  lol <- melt(yolo, id = c("date"))
+  print(lol)
+  
+  ggplot(lol, aes(x = date)) +
+    geom_point(aes(y = value)) +
+    facet_grid(rows = lol$variable) +
+    labs(y = "Values",
+         x = "Date",
+         title = "Figure", 
+         subtitle = "Assignment", 
+         caption = "Yo to the fucking lo")
+
+
+
+PART3 %>%  ggplot() +
+  geom_point(data = PART3, mapping = aes(x = date, y = AQI_num, color = AQI_cat )) +
+  geom_smooth(mapping = aes(formula = AQI_cat ~ N_mean))
+
+PART3 %>%  ggplot(,mapping = aes(x = date)) +
+  geom_point(mapping = aes(y = temp_mean_celsius, color = "Temperature", shape = "16"), size = 0.9) + 
+  geom_point(mapping = aes(y = WS_mean, color = "Wind speed", shape = "17"), size = 0.9) +
+geom_smooth(mapping = aes(y = temp_mean_celsius, color = "Temperature", shape = "16"), size = 0.9) + 
+  geom_smooth(mapping = aes(y = WS_mean, color = "Wind speed", shape = "17"), size = 0.9)
+
+
+ggplot(tripaloski, mapping = aes(x = Date)) + 
+  geom_point(mapping = aes(y = temperature, color = "Temperature", shape = "16")) + 
+  geom_point(mapping = aes(y = windmean, color = "Wind speed", shape = "17")) + 
+  geom_point(mapping = aes(y = ozonemean, color = "Ozone", shape = "3")) + # change shapes
+  geom_point(mapping = aes(y = no2mean, color = "NO2", shape = "5")) + 
+  geom_smooth(mapping = aes(y = temperature, color = "Temperature")) + 
+  geom_smooth(mapping = aes(y = windmean, colour = "Wind speed")) +
+  geom_smooth(mapping = aes(y = ozonemean, colour = "Ozone")) + 
+  geom_smooth(mapping = aes(y = no2mean, colour = "NO2")) +
+  labs(y = "Arithmetic means",
+       x = "Date",
+       colour = "Parameter", 
+       title = "Arithmetic means of weather and pollution variables", 
+       subtitle = "Scatterplot and smoothed line graph of weather and pollution variables.", 
+       caption = "Ozone and NO2 measured in ppb, temperature in \u00B0F, and wind speed in knots.") +
+  guides(shape = FALSE) + 
+  theme(legend.position = "bottom", legend.title=element_blank())
+
+
+
+
+mydata <-  PART3  %>% 
+select (c("temp_mean_celsius", "N_mean", "weighted_ozon"))
+cor(mydata)
+
+myregressnit <- lm(mydata$N_mean ~ mydata$temp_mean_celsius)
+summary(myregressnit)$r.squared
+
+myregresso <- lm(mydata$N_mean ~ mydata$weighted_ozon)
+summary(myregresso)$r.squared
+
+groupeddata <- PART3 %>%  
+  group_by(AQI_cat)
+
+  
+firstplot <- ggplot(PART3) + 
+  geom_point(mapping = aes(y = AQI_cat, x = temp_mean_celsius, color = AQI_cat)) 
+
+secondplot <- ggplot(PART3) + 
+  geom_point(mapping = aes(y = AQI_cat, x = weighted_ozon, color = AQI_cat))
+
+thirdplot <- ggplot(PART3) + 
+  geom_point(mapping = aes(y = AQI_cat, x = N_mean, color = AQI_cat))
+
+fourthplot <- ggplot(PART3) + 
+  geom_point(mapping = aes(y = AQI_cat, x = WS_mean, color = AQI_cat))
+
+install.packages("cowplot")
+library(cowplot)
+  
+plot_grid(firstplot, secondplot, thirdplot, fourthplot,  labels = "AUTO")
+  
+  
+  firstbox <- ggplot(PART3) + 
+    geom_boxplot(mapping = aes(y = AQI_cat, x = temp_mean_celsius, color = AQI_cat)) 
+  
+  firstbox <-  ggplot(data = PART3, mapping = aes(y = temp_mean_celsius, x = AQI_cat, color = AQI_cat)) +
+    geom_boxplot()
+
+  secondbox <-  ggplot(data = PART3, mapping = aes(y = weighted_ozon, x = AQI_cat, color = AQI_cat)) +
+    geom_boxplot()
+
+  thirdbox <-  ggplot(data = PART3, mapping = aes(y = N_mean, x = AQI_cat, color = AQI_cat)) +
+    geom_boxplot()
+  
+  fourthbox <- ggplot(data = PART3, mapping = aes(y = WS_mean, x = AQI_cat, color = AQI_cat)) +
+    geom_boxplot()
+  
+  plot_grid(firstbox, secondbox, thirdbox, fourthbox)
+  
